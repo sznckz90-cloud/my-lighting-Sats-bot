@@ -1,16 +1,9 @@
-// client/src/main.tsx
 import React from "react";
-import { createRoot } from "react-dom/client";
-import App from "./App.tsx";
-import "./index.css";
+import ReactDOM from "react-dom/client";
 
-const container = document.getElementById("root");
-if (!container) {
-  throw new Error("Could not find element with id 'root'");
-}
+const App = () => {
+  return <h1>Hello from Vite + React + Express!</h1>;
+};
 
-createRoot(container).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
+const root = document.getElementById("root")!;
+ReactDOM.createRoot(root).render(<App />);
