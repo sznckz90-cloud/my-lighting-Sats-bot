@@ -1,9 +1,5 @@
-import React from "react";
-import ReactDOM from "react-dom/client";
+import { createRoot } from "react-dom/client";
+import App from "./App";
+import "./index.css";
 
-const App = () => {
-  return <h1>Hello from Vite + React + Express!</h1>;
-};
-
-const root = document.getElementById("root")!;
-ReactDOM.createRoot(root).render(<App />);
+createRoot(document.getElementById("root")!).render(<App />);
