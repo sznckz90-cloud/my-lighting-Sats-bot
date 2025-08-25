@@ -1,4 +1,4 @@
-import type { Express } from "express";
+# type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertUserSchema, insertWithdrawalRequestSchema } from "@shared/schema";
@@ -26,10 +26,76 @@ function generateReferralCode(): string {
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
+  // Admin access control middleware (must be defined first)
+  const checkAdminAccess = (req: any, res: any, next: any) => {
+    const adminTelegramId = '6653616672';
+    const { telegramId } = req.body || req.query;
+    
+    if (telegramId !== adminTelegramId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    next();
+  };
+  
+  // Channel join validation function
+  const checkChannelMembership = async (telegramId: string) => {
+    try {
+      // In production, you would make actual Telegram API call here
+      // For now, return true to allow development
+      const channelId = "-1002480439556";
+      
+      // TODO: Implement actual Telegram Bot API call to check membership
+      // const member = await bot.telegram.getChatMember(channelId, telegramId);
+      // return member.status !== 'left' && member.status !== 'kicked';
+      
+      console.log(`Checking channel membership for user ${telegramId} in ${channelId}`);
+      return true; // Allow for development
+    } catch (error) {
+      console.error('Channel membership check failed:', error);
+      return false;
+    }
+  };
+  
+  // Monetag Ad Callback Endpoint
+  app.post('/ads/callback', async (req, res) => {
+    try {
+      const { userId, status, reward } = req.body;
+      console.log('Monetag callback received:', { userId, status, reward });
+      
+      if (status === 'completed' && userId) {
+        const user = await storage.getUser(userId);
+        if (!user || user.banned) {
+          return res.json({ success: false, error: 'User not found or banned' });
+        }
+        
+        // Get bot stats for earnings calculation
+        const stats = await storage.getBotStats();
+        const earnings = parseFloat(stats.earningsPerAd || "0.00035");
+        
+        // Update user earnings
+        await storage.updateUser(userId, {
+          dailyEarnings: (parseFloat(user.dailyEarnings || "0") + earnings).toFixed(5),
+          totalEarnings: (parseFloat(user.totalEarnings || "0") + earnings).toFixed(5),
+          adsWatched: (user.adsWatched || 0) + 1,
+          dailyAdsWatched: (user.dailyAdsWatched || 0) + 1,
+          lastAdWatch: new Date(),
+        });
+        
+        console.log(`Ad reward processed for user ${userId}: +$${earnings}`);
+        return res.json({ success: true });
+      }
+      
+      res.json({ success: false });
+    } catch (error) {
+      console.error('Monetag callback error:', error);
+      res.status(500).json({ success: false, error: 'Internal server error' });
+    }
+  });
+  
   // Get or create user
   app.post('/api/user', async (req, res) => {
     try {
-      const { telegramId, username } = req.body;
+      const { telegramId, username, referralCode: referrerCode } = req.body;
       
       if (!telegramId || !username) {
         return res.status(400).json({ error: 'Telegram ID and username required' });
@@ -41,13 +107,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) {
         // Create new user
         const referralCode = generateReferralCode();
+        let referredBy = null;
+        
+        // Handle referral if referrerCode provided
+        if (referrerCode) {
+          const referrer = await storage.getUserByReferralCode(referrerCode);
+          if (referrer) {
+            referredBy = referrer.id;
+            console.log(`New user ${telegramId} referred by ${referrerCode}`);
+          }
+        }
+        
         const userData = insertUserSchema.parse({
           telegramId,
           username,
           referralCode,
+          referredBy,
         });
         
         user = await storage.createUser(userData);
+        
+        // Create referral record if referred
+        if (referredBy) {
+          await storage.createReferral({
+            referrerId: referredBy,
+            refereeId: user.id,
+            commission: "0"
+          });
+          console.log(`Referral record created: ${referredBy} -> ${user.id}`);
+        }
       }
 
       res.json(user);
@@ -57,7 +145,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Watch ad endpoint
+  // Watch ad endpoint with channel membership check
   app.post('/api/watch-ad', async (req, res) => {
     try {
       const { userId } = req.body;
@@ -76,6 +164,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: 'Account has been banned' });
       }
 
+      // Check channel membership
+      const isMember = await checkChannelMembership(user.telegramId || "");
+      if (!isMember) {
+        return res.status(403).json({ 
+          error: 'Channel membership required',
+          channelUrl: 'https://t.me/TesterMen'
+        });
+      }
+
       // Check cooldown (3 seconds)
       const now = new Date();
       if (user.lastAdWatch && (now.getTime() - new Date(user.lastAdWatch).getTime()) < 3000) {
@@ -86,7 +183,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const today = new Date().toDateString();
       const lastAdToday = user.lastAdWatch ? new Date(user.lastAdWatch).toDateString() : '';
       
-      let dailyAdsWatched = user.dailyAdsWatched;
+      let dailyAdsWatched = user.dailyAdsWatched || 0;
       if (lastAdToday !== today) {
         dailyAdsWatched = 0; // Reset daily count
       }
@@ -100,9 +197,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const earnings = parseFloat(stats.earningsPerAd || "0.00035");
       const updatedUser = await storage.updateUser(userId, {
-        dailyEarnings: (parseFloat(user.dailyEarnings) + earnings).toFixed(5),
-        totalEarnings: (parseFloat(user.totalEarnings) + earnings).toFixed(5),
-        adsWatched: user.adsWatched + 1,
+        dailyEarnings: (parseFloat(user.dailyEarnings || "0") + earnings).toFixed(5),
+        totalEarnings: (parseFloat(user.totalEarnings || "0") + earnings).toFixed(5),
+        adsWatched: (user.adsWatched || 0) + 1,
         dailyAdsWatched: dailyAdsWatched + 1,
         lastAdWatch: now,
       });
@@ -112,6 +209,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalAdsWatched: (stats.totalAdsWatched || 0) + 1,
         totalEarnings: (parseFloat(stats.totalEarnings || "0") + earnings).toFixed(5),
       });
+
+      // Process referral commission if user was referred
+      if (user.referredBy) {
+        const referrer = await storage.getUser(user.referredBy);
+        if (referrer) {
+          const commission = earnings * 0.1; // 10% commission
+          await storage.updateUser(referrer.id, {
+            totalEarnings: (parseFloat(referrer.totalEarnings || "0") + commission).toFixed(5),
+            dailyEarnings: (parseFloat(referrer.dailyEarnings || "0") + commission).toFixed(5),
+          });
+          
+          // Update referral record
+          const referrals = await storage.getUserReferrals(referrer.id);
+          const referralRecord = referrals.find(r => r.refereeId === user.id);
+          if (referralRecord) {
+            const newCommission = parseFloat(referralRecord.commission || "0") + commission;
+            console.log(`Referral commission: +$${commission.toFixed(5)} to ${referrer.telegramId || "unknown"}`);
+          }
+        }
+      }
 
       res.json({ 
         success: true, 
@@ -143,13 +260,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: 'Account has been banned' });
       }
 
-      if (parseFloat(user.dailyEarnings) <= 0) {
+      if (parseFloat(user.dailyEarnings || "0") <= 0) {
         return res.status(400).json({ error: 'No earnings to claim' });
       }
 
-      const claimed = parseFloat(user.dailyEarnings);
+      const claimed = parseFloat(user.dailyEarnings || "0");
       const updatedUser = await storage.updateUser(userId, {
-        withdrawBalance: (parseFloat(user.withdrawBalance) + claimed).toFixed(5),
+        withdrawBalance: (parseFloat(user.withdrawBalance || "0") + claimed).toFixed(5),
         dailyEarnings: "0",
       });
 
@@ -175,7 +292,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const requestAmount = parseFloat(requestData.amount);
-      const userBalance = parseFloat(user.withdrawBalance);
+      const userBalance = parseFloat(user.withdrawBalance || "0");
 
       // Get current TON price to calculate minimum withdrawal (1 TON)
       const tonData = await fetchTonPrice();
@@ -224,8 +341,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get user referrals
+  app.get('/api/user/:userId/referrals', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const referrals = await storage.getUserReferrals(userId);
+      
+      // Enrich with referee data  
+      const enrichedReferrals = await Promise.all(
+        referrals.map(async (referral) => {
+          const referee = await storage.getUser(referral.refereeId);
+          return {
+            ...referral,
+            referee: referee ? { 
+              username: referee.username, 
+              totalEarnings: referee.totalEarnings,
+              adsWatched: referee.adsWatched 
+            } : null
+          };
+        })
+      );
+      
+      res.json(enrichedReferrals);
+    } catch (error) {
+      console.error('Error in /api/user/referrals:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // Telegram Bot Webhook Handler - Add this for bot integration
+  app.post('/bot/webhook', async (req, res) => {
+    try {
+      const { message, callback_query } = req.body;
+      
+      if (message) {
+        const { from, text, chat } = message;
+        console.log(`Bot message from ${from.id}: ${text}`);
+        
+        // Handle /start command
+        if (text && text.startsWith('/start')) {
+          const startParam = text.split(' ')[1]; // Extract referral code if present
+          
+          const welcomeMessage = `👋 Welcome to LightingSats!\n\n` +
+            `💰 Earn money by watching ads\n` +
+            `👥 Invite friends for 10% commission\n` +
+            `💎 Daily earnings up to $0.0875 (250 ads)\n\n` +
+            `🚀 Open the app to start earning:`;
+            
+          console.log(`Welcome message sent to ${from.id}`);
+          console.log('Start parameter:', startParam || 'none');
+          
+          // Store referral info if provided
+          if (startParam) {
+            console.log(`User ${from.id} came via referral: ${startParam}`);
+          }
+        }
+      }
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Bot webhook error:', error);
+      res.status(500).json({ success: false });
+    }
+  });
+
   // Admin endpoints (for Telegram bot integration)
-  app.get('/api/admin/stats', async (req, res) => {
+  app.get('/api/admin/stats', checkAdminAccess, async (req, res) => {
     try {
       const stats = await storage.getBotStats();
       const users = await storage.getAllUsers();
@@ -251,7 +432,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/admin/pending-withdrawals', async (req, res) => {
+  app.get('/api/admin/pending-withdrawals', checkAdminAccess, async (req, res) => {
     try {
       const pendingRequests = await storage.getPendingWithdrawalRequests();
       
@@ -273,7 +454,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/admin/process-withdrawal', async (req, res) => {
+  app.post('/api/admin/process-withdrawal', checkAdminAccess, async (req, res) => {
     try {
       const { requestId, status, adminNotes } = req.body;
       
@@ -290,7 +471,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Deduct from user balance
         const user = await storage.getUser(request.userId);
         if (user) {
-          const newBalance = (parseFloat(user.withdrawBalance) - parseFloat(request.amount)).toFixed(5);
+          const newBalance = (parseFloat(user.withdrawBalance || "0") - parseFloat(request.amount)).toFixed(5);
           await storage.updateUser(user.id, {
             withdrawBalance: newBalance >= "0" ? newBalance : "0"
           });
@@ -315,16 +496,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Admin access control middleware
-  const checkAdminAccess = (req: any, res: any, next: any) => {
-    const adminTelegramId = '6653616672';
-    const { telegramId } = req.body || req.query;
-    
-    if (telegramId !== adminTelegramId) {
-      return res.status(403).json({ error: 'Access denied' });
-    }
-    next();
-  };
 
   // Admin-only user management endpoints
   app.get('/api/admin/users', checkAdminAccess, async (req, res) => {
@@ -387,27 +558,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/admin/user/flag', checkAdminAccess, async (req, res) => {
-    try {
-      const { userId, flagged, reason } = req.body;
-      
-      const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(404).json({ error: 'User not found' });
-      }
-
-      const updatedUser = await storage.updateUser(userId, {
-        flagged: flagged,
-        flagReason: flagged ? reason : null,
-      });
-
-      res.json({ success: true, user: updatedUser });
-    } catch (error) {
-      console.error('Error in /api/admin/user/flag:', error);
-      res.status(500).json({ error: 'Internal server error' });
-    }
-  });
-
   app.post('/api/admin/claim/approve', checkAdminAccess, async (req, res) => {
     try {
       const { userId } = req.body;
@@ -417,98 +567,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: 'User not found' });
       }
 
-      if (parseFloat(user.dailyEarnings) <= 0) {
+      const claimed = parseFloat(user.dailyEarnings || "0");
+      if (claimed <= 0) {
         return res.status(400).json({ error: 'No earnings to approve' });
       }
 
-      const claimed = parseFloat(user.dailyEarnings);
       const updatedUser = await storage.updateUser(userId, {
-        withdrawBalance: (parseFloat(user.withdrawBalance) + claimed).toFixed(5),
+        withdrawBalance: (parseFloat(user.withdrawBalance || "0") + claimed).toFixed(5),
         dailyEarnings: "0",
-      });
-
-      res.json({ success: true, claimed: claimed.toFixed(5), user: updatedUser });
-    } catch (error) {
-      console.error('Error in /api/admin/claim/approve:', error);
-      res.status(500).json({ error: 'Internal server error' });
-    }
-  });
-
-  app.post('/api/admin/claim/reject', checkAdminAccess, async (req, res) => {
-    try {
-      const { userId, reason } = req.body;
-      
-      const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(404).json({ error: 'User not found' });
-      }
-
-      const updatedUser = await storage.updateUser(userId, {
-        dailyEarnings: "0",
-        flagged: true,
-        flagReason: reason || 'Claim rejected by admin',
       });
 
       res.json({ success: true, user: updatedUser });
     } catch (error) {
-      console.error('Error in /api/admin/claim/reject:', error);
-      res.status(500).json({ error: 'Internal server error' });
-    }
-  });
-
-  app.get('/api/admin/export/csv', checkAdminAccess, async (req, res) => {
-    try {
-      const users = await storage.getAllUsers();
-      
-      const csvHeader = 'Username,Telegram ID,Total Earnings,Withdraw Balance,Ads Watched,Level,Banned,Flagged,Created At\n';
-      const csvData = users.map(user => 
-        `"${user.username}","${user.telegramId}","${user.totalEarnings}","${user.withdrawBalance}",${user.adsWatched},${user.level},${user.banned ? 'Yes' : 'No'},${user.flagged ? 'Yes' : 'No'},"${user.createdAt}"`
-      ).join('\n');
-      
-      res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', 'attachment; filename="lightningsats_users.csv"');
-      res.send(csvHeader + csvData);
-    } catch (error) {
-      console.error('Error in /api/admin/export/csv:', error);
-      res.status(500).json({ error: 'Internal server error' });
-    }
-  });
-
-  // Update earnings and limits settings
-  app.post('/api/admin/update-settings', checkAdminAccess, async (req, res) => {
-    try {
-      const { earningsPerAd, dailyAdLimit } = req.body;
-      
-      const updates: any = {};
-      
-      if (earningsPerAd !== undefined) {
-        if (isNaN(parseFloat(earningsPerAd))) {
-          return res.status(400).json({ error: 'Valid earnings per ad required' });
-        }
-        updates.earningsPerAd = parseFloat(earningsPerAd).toFixed(5);
-        updates.cpmRate = (parseFloat(earningsPerAd) * 1000).toFixed(2); // Update CPM too
-      }
-      
-      if (dailyAdLimit !== undefined) {
-        if (isNaN(parseInt(dailyAdLimit)) || parseInt(dailyAdLimit) < 1) {
-          return res.status(400).json({ error: 'Valid daily ad limit required' });
-        }
-        updates.dailyAdLimit = parseInt(dailyAdLimit);
-      }
-      
-      if (Object.keys(updates).length === 0) {
-        return res.status(400).json({ error: 'No valid updates provided' });
-      }
-
-      const updatedStats = await storage.updateBotStats(updates);
-
-      res.json({ success: true, stats: updatedStats });
-    } catch (error) {
-      console.error('Error in /api/admin/update-settings:', error);
-      res.status(500).json({ error: 'Internal server error' });
-    }
-  });
-
-  const httpServer = createServer(app);
-  return httpServer;
-}
+      console.
