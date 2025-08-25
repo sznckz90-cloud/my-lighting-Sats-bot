@@ -1,4 +1,4 @@
-type { Express } from "express";
+import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertUserSchema, insertWithdrawalRequestSchema } from "@shared/schema";
