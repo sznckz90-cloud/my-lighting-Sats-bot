@@ -52,8 +52,13 @@ export default function Admin() {
             return;
           }
         } else {
-          // Development mode - use mock user ID
-          setCurrentUser({ id: "123456789", first_name: "Dev Admin", username: "dev_admin" });
+          // Development mode - deny access for security
+          toast({
+            variant: "destructive",
+            title: "Access Denied",
+            description: "Admin access only available in Telegram environment",
+          });
+          return;
         }
       } catch (error) {
         console.error('Failed to check admin access:', error);
