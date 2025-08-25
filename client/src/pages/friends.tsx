@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useUserData } from "@/hooks/use-user-data";
@@ -6,8 +7,8 @@ import { useToast } from "@/hooks/use-toast";
 
 const BOT_USERNAME = "LightingSatsBot"; // Real bot username
 
-function generateReferralLink(telegramId: string): string {
-  return `https://t.me/${BOT_USERNAME}?start=${telegramId}`;
+function generateReferralLink(referralCode: string): string {
+  return `https://t.me/${BOT_USERNAME}?start=${referralCode}`;
 }
 
 export default function Friends() {
@@ -16,8 +17,8 @@ export default function Friends() {
   const isInTelegram = isTelegramEnvironment();
 
   const handleCopyReferralLink = async () => {
-    if (!user?.telegramId) {
-      console.warn('Cannot copy referral link: user.telegramId is not available');
+    if (!user?.referralCode) {
+      console.warn('Cannot copy referral link: user.referralCode is not available');
       toast({
         variant: "destructive",
         title: "Error",
@@ -26,7 +27,7 @@ export default function Friends() {
       return;
     }
 
-    const referralLink = generateReferralLink(user.telegramId);
+    const referralLink = generateReferralLink(user.referralCode);
     console.log('Copying referral link:', referralLink);
     
     try {
@@ -47,8 +48,8 @@ export default function Friends() {
   };
 
   const handleShareToTelegram = () => {
-    if (!user?.telegramId) {
-      console.warn('Cannot share to Telegram: user.telegramId is not available');
+    if (!user?.referralCode) {
+      console.warn('Cannot share to Telegram: user.referralCode is not available');
       toast({
         variant: "destructive",
         title: "Error",
@@ -57,7 +58,7 @@ export default function Friends() {
       return;
     }
 
-    const referralLink = generateReferralLink(user.telegramId);
+    const referralLink = generateReferralLink(user.referralCode);
     const message = `Join LightingSats and start earning money by watching ads! ${referralLink}`;
     console.log('Sharing to Telegram:', { referralLink, message });
     shareToTelegram(message);
@@ -96,7 +97,7 @@ export default function Friends() {
       <Card className="p-6 text-center" data-testid="card-referral">
         <h3 className="text-lg font-semibold mb-2 text-white">Referral Link</h3>
         <div className="text-sm font-bold text-primary my-4 break-all px-2" data-testid="text-referral-link">
-          {user.telegramId ? generateReferralLink(user.telegramId) : 'Loading...'}
+          {user.referralCode ? generateReferralLink(user.referralCode) : 'Loading...'}
         </div>
         <Button 
           onClick={handleCopyReferralLink}
