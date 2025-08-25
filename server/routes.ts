@@ -318,10 +318,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin access control middleware
   const checkAdminAccess = (req: any, res: any, next: any) => {
     const adminTelegramId = '6653616672';
-    const devMockId = '123456789'; // Allow mock ID in development
     const { telegramId } = req.body || req.query;
     
-    if (telegramId !== adminTelegramId && telegramId !== devMockId) {
+    if (telegramId !== adminTelegramId) {
       return res.status(403).json({ error: 'Access denied' });
     }
     next();
