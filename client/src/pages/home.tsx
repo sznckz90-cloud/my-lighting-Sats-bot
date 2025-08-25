@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -100,20 +101,37 @@ export default function Home() {
     if (!canWatchAd() || isWatchingAd) return;
     
     setIsWatchingAd(true);
+    let adShown = false;
+    
     try {
       if (typeof (window as any).show_9368336 === 'function') {
+        console.log('Attempting to show Monetag ad...');
         await (window as any).show_9368336();
-        console.log('Rewarded interstitial shown');
+        console.log('Monetag ad completed successfully');
+        adShown = true;
       } else {
-        console.log('Monetag SDK not available, using fallback');
+        console.log('Monetag SDK not available, using fallback timer');
         await new Promise(resolve => setTimeout(resolve, 3000));
+        adShown = true;
       }
-      await watchAdMutation.mutateAsync();
+      
+      // Always give reward after ad is shown or fallback timer completes
+      if (adShown) {
+        console.log('Processing reward for completed ad...');
+        await watchAdMutation.mutateAsync();
+        console.log('Reward processed successfully');
+      }
     } catch (error) {
-      console.error('Rewarded interstitial failed:', error);
-      // Fallback to timer
+      console.error('Ad system error:', error);
+      console.log('Using fallback timer and giving reward anyway...');
+      // Even if ad fails, wait 3 seconds and give reward (better UX)
       await new Promise(resolve => setTimeout(resolve, 3000));
-      await watchAdMutation.mutateAsync();
+      try {
+        await watchAdMutation.mutateAsync();
+        console.log('Fallback reward processed successfully');
+      } catch (rewardError) {
+        console.error('Failed to process reward:', rewardError);
+      }
     } finally {
       setIsWatchingAd(false);
     }
