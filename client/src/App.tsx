@@ -58,7 +58,7 @@ function Header() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary/80 rounded-full flex items-center justify-center text-white">
-            <i className="fas fa-coins text-sm"></i>
+            <span className="text-lg font-bold rotate-180">▲</span>
           </div>
           <div>
             <div className="font-semibold text-white" data-testid="text-app-name">LightingSats</div>
