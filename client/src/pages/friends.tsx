@@ -4,7 +4,7 @@ import { useUserData } from "@/hooks/use-user-data";
 import { shareToTelegram, copyToClipboard, isTelegramEnvironment } from "@/lib/telegram";
 import { useToast } from "@/hooks/use-toast";
 
-const BOT_USERNAME = "LightningSatsbot"; // Your bot username
+const BOT_USERNAME = "LightingSatsBot"; // Real bot username
 
 function generateReferralLink(telegramId: string): string {
   return `https://t.me/${BOT_USERNAME}?start=${telegramId}`;
