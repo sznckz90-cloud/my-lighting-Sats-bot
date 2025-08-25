@@ -67,11 +67,11 @@ export default function Wallet() {
             <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
               <span className="text-white font-bold text-xs">TON</span>
             </div>
-            <span className="font-medium text-white">TON/USD</span>
+            <span className="font-medium text-white">TON/USDT</span>
           </div>
           <div className="text-right">
             <div className="font-bold text-white" data-testid="text-ton-price">
-              ${tonPrice.toFixed(2)}
+              {tonPrice.toFixed(4)} USDT
             </div>
             <div className={`text-xs ${tonChange >= 0 ? 'text-green-500' : 'text-red-500'}`} data-testid="text-ton-change">
               {tonChange >= 0 ? '+' : ''}{tonChange.toFixed(2)}%
