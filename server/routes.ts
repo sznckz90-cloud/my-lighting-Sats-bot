@@ -579,4 +579,4 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ success: true, user: updatedUser });
     } catch (error) {
-      console.
+      console.log("Debug info here");
