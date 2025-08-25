@@ -31,8 +31,11 @@ export async function getOrCreateUser(telegramId: string, username: string): Pro
 
 // Ad watching API
 export async function watchAd(userId: string): Promise<WatchAdResponse> {
+  console.log(`Calling watch-ad API for user: ${userId}`);
   const response = await apiRequest('POST', '/api/watch-ad', { userId });
-  return response.json();
+  const result = await response.json();
+  console.log('Watch-ad API response:', result);
+  return result;
 }
 
 // Earnings API
