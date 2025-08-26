@@ -3,7 +3,7 @@ services:
     name: lightingsats
     env: node
     plan: free
-    buildCommand: npm install && npm run build
+    buildCommand: npm install && ./build.sh
     startCommand: npm run start
     healthCheckPath: /
     region: oregon
