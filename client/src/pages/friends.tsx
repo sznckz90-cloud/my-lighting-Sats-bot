@@ -65,37 +65,9 @@ export default function Friends() {
 
   if (!user) {
     return (
-      <div className="space-y-6">
-        <h2 className="text-xl font-bold text-white" data-testid="text-friends-title">Invite Friends</h2>
-        
-        <Card className="gradient-border p-6" data-testid="card-loading-friends">
-          <div className="flex items-center justify-center py-8">
-            <div className="text-center">
-              <div className="loading-pulse mb-4">
-                <i className="fas fa-users text-4xl text-primary"></i>
-              </div>
-              <p className="text-white mb-2">Loading referral system...</p>
-              <p className="text-sm text-muted-foreground">Preparing your invite links</p>
-            </div>
-          </div>
-        </Card>
-        
-        {/* Show placeholder content */}
-        <div className="space-y-3 opacity-50">
-          <Button 
-            disabled
-            className="w-full btn-primary-gradient text-white font-semibold py-4 px-6 gap-3"
-          >
-            <i className="fas fa-copy"></i>
-            <span>Copy Referral Link</span>
-          </Button>
-          <Button 
-            disabled
-            className="w-full btn-secondary text-white font-semibold py-4 px-6 gap-3"
-          >
-            <i className="fas fa-share"></i>
-            <span>Share to Telegram</span>
-          </Button>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="loading-pulse">
+          <i className="fas fa-users text-4xl text-primary"></i>
         </div>
       </div>
     );
