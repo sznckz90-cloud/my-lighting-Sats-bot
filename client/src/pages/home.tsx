@@ -38,20 +38,29 @@ export default function Home() {
 
   useEffect(() => {
     let retries = 0;
-    const maxRetries = 10;
+    const maxRetries = 5; // Reduce max retries
+    let timeoutId: NodeJS.Timeout;
 
     const checkAdReady = () => {
       if (typeof (window as any).show_9368336 === 'function') {
         console.log('Monetag ads ready!');
-      } else if (retries < maxRetries) {
+        return;
+      } 
+      
+      if (retries < maxRetries) {
         retries++;
-        setTimeout(checkAdReady, 2000);
+        timeoutId = setTimeout(checkAdReady, 1000); // Faster retry interval
       } else {
         console.warn('Monetag ads failed to initialize.');
       }
     };
 
-    setTimeout(checkAdReady, 3000);
+    // Start checking faster
+    timeoutId = setTimeout(checkAdReady, 1000);
+    
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, []);
 
   const initInAppInterstitial = () => {
@@ -100,20 +109,37 @@ export default function Home() {
     if (!canWatchAd() || isWatchingAd) return;
     
     setIsWatchingAd(true);
+    let adShown = false;
+    
     try {
       if (typeof (window as any).show_9368336 === 'function') {
+        console.log('Attempting to show Monetag ad...');
         await (window as any).show_9368336();
-        console.log('Rewarded interstitial shown');
+        console.log('Monetag ad completed successfully');
+        adShown = true;
       } else {
-        console.log('Monetag SDK not available, using fallback');
+        console.log('Monetag SDK not available, using fallback timer');
         await new Promise(resolve => setTimeout(resolve, 3000));
+        adShown = true;
       }
-      await watchAdMutation.mutateAsync();
+      
+      // Always give reward after ad is shown or fallback timer completes
+      if (adShown) {
+        console.log('Processing reward for completed ad...');
+        await watchAdMutation.mutateAsync();
+        console.log('Reward processed successfully');
+      }
     } catch (error) {
-      console.error('Rewarded interstitial failed:', error);
-      // Fallback to timer
+      console.error('Ad system error:', error);
+      console.log('Using fallback timer and giving reward anyway...');
+      // Even if ad fails, wait 3 seconds and give reward (better UX)
       await new Promise(resolve => setTimeout(resolve, 3000));
-      await watchAdMutation.mutateAsync();
+      try {
+        await watchAdMutation.mutateAsync();
+        console.log('Fallback reward processed successfully');
+      } catch (rewardError) {
+        console.error('Failed to process reward:', rewardError);
+      }
     } finally {
       setIsWatchingAd(false);
     }
@@ -165,7 +191,7 @@ export default function Home() {
             <span className="text-white font-medium">Withdraw Balance</span>
           </div>
           <div className="text-3xl font-bold text-white mb-1" data-testid="text-withdraw-balance">
-            ${parseFloat(user.withdrawBalance).toFixed(5)}
+            ${parseFloat(user.withdrawBalance || "0").toFixed(5)}
           </div>
           <div className="text-sm text-muted-foreground">Available for withdrawal</div>
         </Card>
@@ -177,7 +203,7 @@ export default function Home() {
             <span className="text-white font-medium">Today's Earnings</span>
           </div>
           <div className="text-3xl font-bold text-green-500 mb-1" data-testid="text-daily-earnings">
-            ${parseFloat(user.dailyEarnings).toFixed(5)}
+            ${parseFloat(user.dailyEarnings || "0").toFixed(5)}
           </div>
           <div className="text-sm text-muted-foreground">Earned from watching ads</div>
         </Card>
@@ -218,7 +244,7 @@ export default function Home() {
               <i className="fas fa-clock"></i>
               <span>Wait {cooldown}s</span>
             </>
-          ) : dailyProgress.current >= dailyProgress.max ? (
+          ) : (dailyProgress.current || 0) >= (dailyProgress.max || 0) ? (
             <>
               <i className="fas fa-check"></i>
               <span>Daily Limit Reached</span>
