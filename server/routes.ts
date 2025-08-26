@@ -496,7 +496,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else if (filter === 'flagged') {
         users = users.filter(user => user.flagged);
       } else if (filter === 'pending-claims') {
-        users = users.filter(user => parseFloat(user.dailyEarnings) > 0);
+        users = users.filter(user => parseFloat(user.dailyEarnings || '0') > 0);
       }
       
       // Sort by most recent activity
