@@ -11,7 +11,7 @@ function generateReferralLink(referralCode: string): string {
 }
 
 export default function Friends() {
-  const { user } = useUserData();
+  const { user, isLoading, error } = useUserData();
   const { toast } = useToast();
   const isInTelegram = isTelegramEnvironment();
 
@@ -28,7 +28,7 @@ export default function Friends() {
 
     const referralLink = generateReferralLink(user.referralCode);
     console.log('Copying referral link:', referralLink);
-    
+
     try {
       await copyToClipboard(referralLink);
       toast({
@@ -63,11 +63,23 @@ export default function Friends() {
     shareToTelegram(message);
   };
 
-  if (!user) {
+  if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="loading-pulse">
-          <i className="fas fa-users text-4xl text-primary"></i>
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="text-center">
+          <div className="text-4xl mb-4 text-destructive">⚠️</div>
+          <p className="text-muted-foreground">Failed to load friends data</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading || !user) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="text-center">
+          <div className="loading-pulse text-4xl mb-4">👥</div>
+          <p className="text-muted-foreground">Loading friends data...</p>
         </div>
       </div>
     );
@@ -76,7 +88,7 @@ export default function Friends() {
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-bold text-white" data-testid="text-friends-title">Invite Friends</h2>
-      
+
       {/* Development Notice */}
       {!isInTelegram && (
         <Card className="p-4 bg-yellow-500/10 border-yellow-500/20" data-testid="card-dev-notice">
@@ -91,7 +103,7 @@ export default function Friends() {
           </div>
         </Card>
       )}
-      
+
       {/* Referral Card */}
       <Card className="p-6 text-center" data-testid="card-referral">
         <h3 className="text-lg font-semibold mb-2 text-white">Referral Link</h3>
