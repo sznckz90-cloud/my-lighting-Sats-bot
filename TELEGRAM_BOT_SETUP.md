@@ -54,7 +54,7 @@ When users interact with your bot, they get:
 Add these to your Render deployment:
 ```
 TELEGRAM_BOT_TOKEN=7561099955:AAF3Pc-C1-dhLiGqS_hwnegI5a9_55evHcQ
-WEB_APP_URL=https://lighting-sats-u7wg.onrender.com
+WEB_APP_URL=https://my-lighting-sats-bot.onrender.com
 ```
 
 ### 5. Run the Bot
