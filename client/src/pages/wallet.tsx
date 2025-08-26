@@ -33,31 +33,9 @@ export default function Wallet() {
 
   if (!user) {
     return (
-      <div className="space-y-6">
-        <h2 className="text-xl font-bold text-white" data-testid="text-wallet-title">Wallet</h2>
-        
-        <Card className="gradient-border p-6" data-testid="card-loading-wallet">
-          <div className="flex items-center justify-center py-8">
-            <div className="text-center">
-              <div className="loading-pulse mb-4">
-                <i className="fas fa-wallet text-4xl text-primary"></i>
-              </div>
-              <p className="text-white mb-2">Loading your wallet...</p>
-              <p className="text-sm text-muted-foreground">This usually takes just a few seconds</p>
-            </div>
-          </div>
-        </Card>
-        
-        {/* Show placeholder content so users don't feel stuck */}
-        <div className="space-y-3 opacity-50">
-          <Button 
-            disabled
-            className="w-full btn-primary-gradient text-white font-semibold py-4 px-6 gap-3"
-            data-testid="button-withdraw-disabled"
-          >
-            <i className="fas fa-money-bill-wave"></i>
-            <span>Withdraw Funds</span>
-          </Button>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="loading-pulse">
+          <i className="fas fa-wallet text-4xl text-primary"></i>
         </div>
       </div>
     );
@@ -81,23 +59,6 @@ export default function Wallet() {
         <div className="text-sm text-muted-foreground">Available for withdrawal</div>
       </Card>
 
-
-      {/* Help Guide for new users */}
-      {userBalance < minimumWithdrawUSD && (
-        <Card className="bg-yellow-500/10 border-yellow-500/20 p-4" data-testid="card-withdrawal-guide">
-          <div className="flex items-start gap-3">
-            <i className="fas fa-info-circle text-yellow-400 mt-1"></i>
-            <div>
-              <p className="text-white font-medium mb-1">Withdrawal Requirements:</p>
-              <p className="text-sm text-yellow-200">
-                • Minimum withdrawal: $1.00<br/>
-                • Keep earning by watching ads on the Home page<br/>
-                • Claim your earnings to move them to withdraw balance
-              </p>
-            </div>
-          </div>
-        </Card>
-      )}
 
       {/* Withdrawal Actions */}
       <div className="space-y-3">
