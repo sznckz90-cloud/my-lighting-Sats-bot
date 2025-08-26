@@ -118,8 +118,8 @@ export default function Home() {
         console.log('Monetag ad completed successfully');
         adShown = true;
       } else {
-        console.log('Monetag SDK not available, using quick fallback');
-        await new Promise(resolve => setTimeout(resolve, 1500)); // Reduced from 3 to 1.5 seconds
+        console.log('Monetag SDK not available, using fallback timer');
+        await new Promise(resolve => setTimeout(resolve, 3000));
         adShown = true;
       }
       
@@ -131,9 +131,9 @@ export default function Home() {
       }
     } catch (error) {
       console.error('Ad system error:', error);
-      console.log('Using quick fallback and giving reward anyway...');
-      // Even if ad fails, wait shorter time and give reward (better UX)
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      console.log('Using fallback timer and giving reward anyway...');
+      // Even if ad fails, wait 3 seconds and give reward (better UX)
+      await new Promise(resolve => setTimeout(resolve, 3000));
       try {
         await watchAdMutation.mutateAsync();
         console.log('Fallback reward processed successfully');
@@ -157,7 +157,7 @@ export default function Home() {
         console.log('Rewarded popup shown for claiming');
       } else {
         console.log('Monetag SDK not available for claiming');
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Reduced to 1 second
+        await new Promise(resolve => setTimeout(resolve, 2000));
       }
       claimEarningsMutation.mutate();
     } catch (error) {
@@ -172,35 +172,9 @@ export default function Home() {
 
   if (!user) {
     return (
-      <div className="space-y-6">
-        <Card className="gradient-border p-6" data-testid="card-loading-home">
-          <div className="flex items-center justify-center py-8">
-            <div className="text-center">
-              <div className="loading-pulse mb-4">
-                <i className="fas fa-coins text-4xl text-primary"></i>
-              </div>
-              <p className="text-white mb-2">Starting your earning journey...</p>
-              <p className="text-sm text-muted-foreground">Loading your profile and earnings</p>
-            </div>
-          </div>
-        </Card>
-        
-        {/* Show placeholder content to prevent feeling stuck */}
-        <div className="space-y-3 opacity-50">
-          <Button 
-            disabled
-            className="w-full btn-primary-gradient text-white font-semibold py-4 px-6 gap-3"
-          >
-            <i className="fas fa-play"></i>
-            <span>Watch Ad & Earn</span>
-          </Button>
-          <Button 
-            disabled
-            className="w-full btn-secondary text-white font-semibold py-4 px-6 gap-3"
-          >
-            <i className="fas fa-gift"></i>
-            <span>Claim Earnings</span>
-          </Button>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="loading-pulse">
+          <i className="fas fa-coins text-4xl text-primary"></i>
         </div>
       </div>
     );
@@ -249,23 +223,6 @@ export default function Home() {
           data-testid="progress-daily"
         />
       </div>
-
-      {/* Quick Guide */}
-      {parseFloat(user.dailyEarnings || "0") === 0 && (
-        <Card className="bg-blue-500/10 border-blue-500/20 p-4" data-testid="card-guide">
-          <div className="flex items-start gap-3">
-            <i className="fas fa-lightbulb text-blue-400 mt-1"></i>
-            <div>
-              <p className="text-white font-medium mb-1">Quick Start Guide:</p>
-              <p className="text-sm text-blue-200">
-                1. Tap "Watch to Earn" to watch ads and earn money<br/>
-                2. Claim your earnings when available<br/>
-                3. Go to Wallet to withdraw when you reach $1.00
-              </p>
-            </div>
-          </div>
-        </Card>
-      )}
 
       {/* Action Buttons */}
       <div className="space-y-3">
@@ -320,7 +277,7 @@ export default function Home() {
           ) : (
             <>
               <i className="fas fa-gift"></i>
-              <span>Claim Earnings</span>
+              <span>Claim Daily Earnings (Every 10 Ads)</span>
             </>
           )}
         </Button>
@@ -334,7 +291,7 @@ export default function Home() {
               <i className="fas fa-play-circle text-4xl text-primary"></i>
             </div>
             <div className="text-white font-medium">Watching Ad...</div>
-            <div className="text-sm text-muted-foreground mt-1">Please wait 2 seconds</div>
+            <div className="text-sm text-muted-foreground mt-1">Please wait 3 seconds</div>
           </Card>
         </div>
       )}
