@@ -4,12 +4,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useUserData } from "@/hooks/use-user-data";
-import { useTonPrice } from "@/hooks/use-ton-price";
 import { useState } from "react";
 
 export default function Wallet() {
   const { user, withdrawalMutation, canWithdraw } = useUserData();
-  const { tonPrice, tonChange } = useTonPrice();
+  const minimumWithdrawUSD = 1.00; // $1 minimum withdrawal
   const [withdrawalAmount, setWithdrawalAmount] = useState("");
   const [telegramUsername, setTelegramUsername] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -42,7 +41,7 @@ export default function Wallet() {
     );
   }
 
-  const userBalance = parseFloat(user.withdrawBalance);
+  const userBalance = parseFloat(user.withdrawBalance || "0");
 
   return (
     <div className="space-y-6">
@@ -60,25 +59,6 @@ export default function Wallet() {
         <div className="text-sm text-muted-foreground">Available for withdrawal</div>
       </Card>
 
-      {/* TON Price Display */}
-      <Card className="p-4" data-testid="card-ton-price">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-              <span className="text-white font-bold text-xs">TON</span>
-            </div>
-            <span className="font-medium text-white">TON/USD</span>
-          </div>
-          <div className="text-right">
-            <div className="font-bold text-white" data-testid="text-ton-price">
-              ${tonPrice.toFixed(2)}
-            </div>
-            <div className={`text-xs ${tonChange >= 0 ? 'text-green-500' : 'text-red-500'}`} data-testid="text-ton-change">
-              {tonChange >= 0 ? '+' : ''}{tonChange.toFixed(2)}%
-            </div>
-          </div>
-        </div>
-      </Card>
 
       {/* Withdrawal Actions */}
       <div className="space-y-3">
@@ -86,7 +66,7 @@ export default function Wallet() {
           <DialogTrigger asChild>
             <Button 
               className="w-full btn-primary-gradient text-white font-semibold py-4 px-6 gap-3 active:scale-95"
-              disabled={userBalance < tonPrice}
+              disabled={userBalance < minimumWithdrawUSD}
               data-testid="button-withdraw-funds"
             >
               <i className="fas fa-money-bill-wave"></i>
@@ -105,10 +85,10 @@ export default function Wallet() {
                   type="number"
                   value={withdrawalAmount}
                   onChange={(e) => setWithdrawalAmount(e.target.value)}
-                  min={tonPrice.toFixed(2)}
+                  min={minimumWithdrawUSD.toFixed(2)}
                   max={userBalance}
                   step="0.01"
-                  placeholder="Minimum 1 TON"
+                  placeholder="Minimum $1.00"
                   className="bg-muted border-border text-white"
                   data-testid="input-withdrawal-amount"
                 />
@@ -126,7 +106,7 @@ export default function Wallet() {
                 />
               </div>
               <div className="text-sm text-muted-foreground">
-                <p>• Minimum withdrawal: 1 TON</p>
+                <p>• Minimum withdrawal: $1.00</p>
                 <p>• Processing time: 1-3 business days</p>
                 <p>• Admin will contact you via Telegram</p>
               </div>
@@ -160,7 +140,7 @@ export default function Wallet() {
         </Dialog>
         
         <div className="text-center text-muted-foreground text-sm mt-4" data-testid="text-minimum-withdrawal">
-          Minimum withdrawal: 1 TON
+          Minimum withdrawal: $1.00
         </div>
       </div>
 
