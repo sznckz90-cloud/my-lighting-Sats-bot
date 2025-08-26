@@ -81,7 +81,8 @@ export function useUserData() {
       return user;
     },
     enabled: true,
-    retry: false, // Don't retry on failure - faster error handling
+    retry: 3, // Retry up to 3 times to reduce loading failures
+    retryDelay: 1000, // Wait 1 second between retries
     staleTime: 5 * 60 * 1000, // Keep data fresh for 5 minutes
     refetchOnWindowFocus: false, // Don't refetch when window gains focus
   });
@@ -119,7 +120,7 @@ export function useUserData() {
       let message = error.message || "Failed to watch ad";
       
       if (message.includes('Cooldown active')) {
-        message = "Please wait 3 seconds before next ad";
+        message = "Please wait 2 seconds before next ad";
       } else if (message.includes('Daily limit reached')) {
         message = "Daily limit reached (250 ads)";
       } else if (message.includes('Channel membership required')) {
@@ -193,7 +194,7 @@ export function useUserData() {
     
     const now = Date.now();
     const lastAdWatch = user.lastAdWatch ? new Date(user.lastAdWatch).getTime() : 0;
-    const cooldownExpired = now - lastAdWatch >= 3000; // 3 seconds
+    const cooldownExpired = now - lastAdWatch >= 2000; // Reduced to 2 seconds
     
     // Check if it's a new day to reset daily count
     const today = new Date().toDateString();
@@ -208,7 +209,7 @@ export function useUserData() {
     
     const now = Date.now();
     const lastAdWatch = new Date(user.lastAdWatch).getTime();
-    const remaining = Math.max(0, 3000 - (now - lastAdWatch));
+    const remaining = Math.max(0, 2000 - (now - lastAdWatch)); // Reduced to 2 seconds
     
     return Math.ceil(remaining / 1000);
   };
@@ -228,13 +229,8 @@ export function useUserData() {
   const canClaimEarnings = () => {
     if (!user) return false;
     
-    // Get current day's ad count
-    const today = new Date().toDateString();
-    const lastAdToday = user.lastAdWatch ? new Date(user.lastAdWatch).toDateString() : '';
-    const todayAdsWatched = lastAdToday === today ? (user.dailyAdsWatched || 0) : 0;
-    
-    // Can claim if watched at least 10 ads and has earnings
-    return parseFloat(user.dailyEarnings || "0") > 0 && (todayAdsWatched || 0) >= 10 && (todayAdsWatched || 0) % 10 === 0;
+    // Simplified: Can claim if has any earnings (remove complex requirements)
+    return parseFloat(user.dailyEarnings || "0") > 0;
   };
 
   const canWithdraw = (amount: number) => {
