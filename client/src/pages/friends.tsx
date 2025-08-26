@@ -11,12 +11,12 @@ function generateReferralLink(referralCode: string): string {
 }
 
 export default function Friends() {
-  const { user, isLoading, error } = useUserData();
+  const { user: displayUser, isLoading, error } = useUserData();
   const { toast } = useToast();
   const isInTelegram = isTelegramEnvironment();
 
   const handleCopyReferralLink = async () => {
-    if (!user?.referralCode) {
+    if (!displayUser?.referralCode) {
       console.warn('Cannot copy referral link: user.referralCode is not available');
       toast({
         variant: "destructive",
@@ -26,7 +26,7 @@ export default function Friends() {
       return;
     }
 
-    const referralLink = generateReferralLink(user.referralCode);
+    const referralLink = generateReferralLink(displayUser.referralCode);
     console.log('Copying referral link:', referralLink);
 
     try {
@@ -47,7 +47,7 @@ export default function Friends() {
   };
 
   const handleShareToTelegram = () => {
-    if (!user?.referralCode) {
+    if (!displayUser?.referralCode) {
       console.warn('Cannot share to Telegram: user.referralCode is not available');
       toast({
         variant: "destructive",
@@ -57,7 +57,7 @@ export default function Friends() {
       return;
     }
 
-    const referralLink = generateReferralLink(user.referralCode);
+    const referralLink = generateReferralLink(displayUser.referralCode);
     const message = `Join LightingSats and start earning money by watching ads! ${referralLink}`;
     console.log('Sharing to Telegram:', { referralLink, message });
     shareToTelegram(message);
@@ -74,7 +74,7 @@ export default function Friends() {
     );
   }
 
-  if (isLoading || !user) {
+  if (isLoading || !displayUser) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
         <div className="text-center">
@@ -97,7 +97,7 @@ export default function Friends() {
             <div>
               <p className="text-sm text-yellow-200 font-medium">Development Mode</p>
               <p className="text-xs text-yellow-300/80">
-                Using mock Telegram ID ({user?.telegramId}). Open in Telegram for real referral links.
+                Using mock Telegram ID ({displayUser?.telegramId}). Open in Telegram for real referral links.
               </p>
             </div>
           </div>
@@ -108,7 +108,7 @@ export default function Friends() {
       <Card className="p-6 text-center" data-testid="card-referral">
         <h3 className="text-lg font-semibold mb-2 text-white">Referral Link</h3>
         <div className="text-sm font-bold text-primary my-4 break-all px-2" data-testid="text-referral-link">
-          {user.referralCode ? generateReferralLink(user.referralCode) : 'Loading...'}
+          {displayUser.referralCode ? generateReferralLink(displayUser.referralCode) : 'Loading...'}
         </div>
         <Button 
           onClick={handleCopyReferralLink}
@@ -120,13 +120,30 @@ export default function Friends() {
         </Button>
       </Card>
 
-      {/* Friends List Placeholder */}
+      {/* Friends List */}
       <div className="space-y-3" data-testid="container-friends-list">
-        <div className="text-center py-10 text-muted-foreground">
-          <i className="fas fa-users text-4xl mb-4 opacity-50"></i>
-          <p className="text-base mb-2">No friends invited yet</p>
-          <p className="text-sm">Share your referral link to start earning!</p>
-        </div>
+        <h3 className="text-lg font-semibold text-white">Your Referrals</h3>
+        {displayUser.referralCount > 0 ? (
+          <Card className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-white font-semibold">
+                  {displayUser.referralCount || 0} Friends Joined
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Total Commission: ${displayUser.referralEarnings || "0.00000"}
+                </div>
+              </div>
+              <i className="fas fa-users text-primary text-2xl"></i>
+            </div>
+          </Card>
+        ) : (
+          <div className="text-center py-10 text-muted-foreground">
+            <i className="fas fa-users text-4xl mb-4 opacity-50"></i>
+            <p className="text-base mb-2">No friends invited yet</p>
+            <p className="text-sm">Share your referral link to start earning!</p>
+          </div>
+        )}
       </div>
 
       {/* Telegram Share Button */}
