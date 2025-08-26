@@ -13,8 +13,6 @@ export default function Home() {
     getCooldownRemaining,
     getDailyProgress,
     canClaimEarnings,
-    isLoading, // Assuming isLoading is available from useUserData
-    error,     // Assuming error is available from useUserData
   } = useUserData();
 
   const [cooldown, setCooldown] = useState(0);
@@ -40,29 +38,20 @@ export default function Home() {
 
   useEffect(() => {
     let retries = 0;
-    const maxRetries = 5; // Reduce max retries
-    let timeoutId: NodeJS.Timeout;
+    const maxRetries = 10;
 
     const checkAdReady = () => {
       if (typeof (window as any).show_9368336 === 'function') {
         console.log('Monetag ads ready!');
-        return;
-      }
-
-      if (retries < maxRetries) {
+      } else if (retries < maxRetries) {
         retries++;
-        timeoutId = setTimeout(checkAdReady, 1000); // Faster retry interval
+        setTimeout(checkAdReady, 2000);
       } else {
         console.warn('Monetag ads failed to initialize.');
       }
     };
 
-    // Start checking faster
-    timeoutId = setTimeout(checkAdReady, 1000);
-
-    return () => {
-      if (timeoutId) clearTimeout(timeoutId);
-    };
+    setTimeout(checkAdReady, 3000);
   }, []);
 
   const initInAppInterstitial = () => {
@@ -91,7 +80,7 @@ export default function Home() {
     const timer = setTimeout(() => {
       initInAppInterstitial();
     }, 5000); // Wait 5 seconds for SDK to load
-
+    
     return () => clearTimeout(timer);
   }, []);
 
@@ -107,83 +96,63 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [user?.lastAdWatch, getCooldownRemaining]);
 
-  const handleWatchAd = async () => {
+  const showRewardedInterstitial = async () => {
     if (!canWatchAd() || isWatchingAd) return;
-
+    
     setIsWatchingAd(true);
-    let adShown = false;
-
     try {
-      // Show Monetag ad first
-      if (typeof window.show_9368336 === 'function') {
-        console.log('Attempting to show Monetag ad...');
-        try {
-          await new Promise<void>((resolve, reject) => {
-            const timeout = setTimeout(() => {
-              console.log('Ad timeout reached');
-              reject(new Error('Ad timeout'));
-            }, 10000); // 10 second timeout
-
-            // Try to show the ad
-            window.show_9368336({
-              onLoad: () => {
-                console.log('Ad loaded successfully');
-                clearTimeout(timeout);
-                adShown = true;
-                resolve();
-              },
-              onError: (error: any) => {
-                console.error('Ad failed to load:', error);
-                clearTimeout(timeout);
-                reject(error);
-              },
-              onComplete: () => {
-                console.log('Ad completed');
-                clearTimeout(timeout);
-                adShown = true;
-                resolve();
-              }
-            });
-          });
-        } catch (adError) {
-          console.warn('Monetag ad failed, continuing with API call:', adError);
-        }
+      if (typeof (window as any).show_9368336 === 'function') {
+        await (window as any).show_9368336();
+        console.log('Rewarded interstitial shown');
       } else {
-        console.log('Monetag SDK not ready, proceeding with API call');
+        console.log('Monetag SDK not available, using fallback');
+        await new Promise(resolve => setTimeout(resolve, 3000));
       }
-
-      // Always call the API regardless of ad success
-      if (displayUser?.id && displayUser.id !== "loading...") {
-        console.log('Calling watchAd API...');
-        await watchAdMutation.mutateAsync(displayUser.id);
-        console.log('Watch ad completed successfully');
-      }
+      await watchAdMutation.mutateAsync();
     } catch (error) {
-      console.error('Error in handleWatchAd:', error);
+      console.error('Rewarded interstitial failed:', error);
+      // Fallback to timer
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      await watchAdMutation.mutateAsync();
     } finally {
       setIsWatchingAd(false);
     }
   };
 
-  const handleClaimEarnings = async () => {
-    if (!canClaimEarnings() || !displayUser?.id || displayUser.id === "loading...") return;
+  const handleWatchAd = showRewardedInterstitial;
 
+  const showRewardedPopup = async () => {
+    if (!canClaimEarnings()) return;
+    
+    setIsWatchingAd(true);
     try {
-      await claimEarningsMutation.mutateAsync(displayUser.id);
+      if (typeof (window as any).show_9368336 === 'function') {
+        await (window as any).show_9368336();
+        console.log('Rewarded popup shown for claiming');
+      } else {
+        console.log('Monetag SDK not available for claiming');
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+      claimEarningsMutation.mutate();
     } catch (error) {
-      console.error('Error claiming earnings:', error);
+      console.warn('Rewarded popup failed:', error);
+      claimEarningsMutation.mutate();
+    } finally {
+      setIsWatchingAd(false);
     }
   };
 
-  // Show content immediately with fallback values
-  const displayUser = user || {
-    withdrawBalance: "0",
-    dailyEarnings: "0",
-    dailyAdCount: 0,
-    lastAdWatch: null,
-    pendingEarnings: "0",
-    id: "loading..."
-  };
+  const handleClaimEarnings = showRewardedPopup;
+
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="loading-pulse">
+          <i className="fas fa-coins text-4xl text-primary"></i>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -196,7 +165,7 @@ export default function Home() {
             <span className="text-white font-medium">Withdraw Balance</span>
           </div>
           <div className="text-3xl font-bold text-white mb-1" data-testid="text-withdraw-balance">
-            ${parseFloat(displayUser.withdrawBalance || "0").toFixed(5)}
+            ${parseFloat(user.withdrawBalance).toFixed(5)}
           </div>
           <div className="text-sm text-muted-foreground">Available for withdrawal</div>
         </Card>
@@ -208,7 +177,7 @@ export default function Home() {
             <span className="text-white font-medium">Today's Earnings</span>
           </div>
           <div className="text-3xl font-bold text-green-500 mb-1" data-testid="text-daily-earnings">
-            ${parseFloat(displayUser.dailyEarnings || "0").toFixed(5)}
+            ${parseFloat(user.dailyEarnings).toFixed(5)}
           </div>
           <div className="text-sm text-muted-foreground">Earned from watching ads</div>
         </Card>
@@ -222,8 +191,8 @@ export default function Home() {
             {dailyProgress.current}/{dailyProgress.max}
           </span>
         </div>
-        <Progress
-          value={dailyProgress.percentage}
+        <Progress 
+          value={dailyProgress.percentage} 
           className="w-full h-2"
           data-testid="progress-daily"
         />
@@ -249,7 +218,7 @@ export default function Home() {
               <i className="fas fa-clock"></i>
               <span>Wait {cooldown}s</span>
             </>
-          ) : (dailyProgress.current || 0) >= (dailyProgress.max || 0) ? (
+          ) : dailyProgress.current >= dailyProgress.max ? (
             <>
               <i className="fas fa-check"></i>
               <span>Daily Limit Reached</span>
