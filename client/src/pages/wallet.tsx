@@ -31,29 +31,12 @@ export default function Wallet() {
     setTelegramUsername("");
   };
 
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="text-center">
-          <div className="text-4xl mb-4 text-destructive">⚠️</div>
-          <p className="text-muted-foreground">Failed to load wallet data</p>
-        </div>
-      </div>
-    );
-  }
+  // Show content immediately with fallback values
+  const displayUser = user || {
+    withdrawBalance: "0"
+  };
 
-  if (isLoading || !user) {
-    return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="text-center">
-          <div className="loading-pulse text-4xl mb-4">💰</div>
-          <p className="text-muted-foreground">Loading wallet data...</p>
-        </div>
-      </div>
-    );
-  }
-
-  const userBalance = parseFloat(user.withdrawBalance || "0");
+  const userBalance = parseFloat(displayUser.withdrawBalance || "0");
 
   return (
     <div className="space-y-6">
@@ -156,12 +139,36 @@ export default function Wallet() {
         </div>
       </div>
 
-      {/* Withdrawal History Placeholder */}
+      {/* Withdrawal History */}
       <div className="mt-8">
         <h3 className="text-lg font-semibold mb-4 text-white">Recent Withdrawals</h3>
-        <div className="text-center py-6 text-muted-foreground" data-testid="container-withdrawal-history">
-          <i className="fas fa-history text-3xl mb-3 opacity-50"></i>
-          <p>No withdrawal history</p>
+        <div className="space-y-3" data-testid="container-withdrawal-history">
+          {displayUser.withdrawalHistory && displayUser.withdrawalHistory.length > 0 ? (
+            displayUser.withdrawalHistory.map((withdrawal, index) => (
+              <Card key={index} className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-white font-semibold">${withdrawal.amount}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {new Date(withdrawal.createdAt).toLocaleDateString()}
+                    </div>
+                  </div>
+                  <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    withdrawal.status === 'approved' ? 'bg-green-500/20 text-green-400' :
+                    withdrawal.status === 'rejected' ? 'bg-red-500/20 text-red-400' :
+                    'bg-yellow-500/20 text-yellow-400'
+                  }`}>
+                    {withdrawal.status.toUpperCase()}
+                  </div>
+                </div>
+              </Card>
+            ))
+          ) : (
+            <div className="text-center py-6 text-muted-foreground">
+              <i className="fas fa-history text-3xl mb-3 opacity-50"></i>
+              <p>No withdrawal history</p>
+            </div>
+          )}
         </div>
       </div>
     </div>
