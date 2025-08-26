@@ -7,7 +7,7 @@ import { useUserData } from "@/hooks/use-user-data";
 import { useState } from "react";
 
 export default function Wallet() {
-  const { user, withdrawalMutation, canWithdraw } = useUserData();
+  const { user, withdrawalMutation, canWithdraw, isLoading, error } = useUserData();
   const minimumWithdrawUSD = 1.00; // $1 minimum withdrawal
   const [withdrawalAmount, setWithdrawalAmount] = useState("");
   const [telegramUsername, setTelegramUsername] = useState("");
@@ -15,7 +15,7 @@ export default function Wallet() {
 
   const handleWithdrawRequest = () => {
     const amount = parseFloat(withdrawalAmount);
-    
+
     if (!canWithdraw(amount)) {
       return;
     }
@@ -31,11 +31,23 @@ export default function Wallet() {
     setTelegramUsername("");
   };
 
-  if (!user) {
+  if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="loading-pulse">
-          <i className="fas fa-wallet text-4xl text-primary"></i>
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="text-center">
+          <div className="text-4xl mb-4 text-destructive">⚠️</div>
+          <p className="text-muted-foreground">Failed to load wallet data</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading || !user) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="text-center">
+          <div className="loading-pulse text-4xl mb-4">💰</div>
+          <p className="text-muted-foreground">Loading wallet data...</p>
         </div>
       </div>
     );
@@ -46,7 +58,7 @@ export default function Wallet() {
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-bold text-white" data-testid="text-wallet-title">Wallet</h2>
-      
+
       {/* Total Balance Card */}
       <Card className="gradient-border p-6" data-testid="card-total-balance">
         <div className="flex items-center gap-2 mb-2">
@@ -138,7 +150,7 @@ export default function Wallet() {
             </div>
           </DialogContent>
         </Dialog>
-        
+
         <div className="text-center text-muted-foreground text-sm mt-4" data-testid="text-minimum-withdrawal">
           Minimum withdrawal: $1.00
         </div>
