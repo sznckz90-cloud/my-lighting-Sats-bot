@@ -14,7 +14,7 @@ export default function Home() {
     getDailyProgress,
     canClaimEarnings,
     isLoading, // Assuming isLoading is available from useUserData
-    error, // Assuming error is available from useUserData
+    error,     // Assuming error is available from useUserData
   } = useUserData();
 
   const [cooldown, setCooldown] = useState(0);
@@ -24,19 +24,17 @@ export default function Home() {
 
   // Monetag SDK Integration
   useEffect(() => {
-    const existingScript = document.querySelector(
-      "script[src*='libtl.com/sdk.js']",
-    );
+    const existingScript = document.querySelector("script[src*='libtl.com/sdk.js']");
     if (!existingScript) {
-      const script = document.createElement("script");
-      script.src = "//libtl.com/sdk.js";
-      script.setAttribute("data-zone", "9368336");
-      script.setAttribute("data-sdk", "show_9368336");
-      script.setAttribute("data-cfasync", "false");
+      const script = document.createElement('script');
+      script.src = '//libtl.com/sdk.js';
+      script.setAttribute('data-zone', '9368336');
+      script.setAttribute('data-sdk', 'show_9368336');
+      script.setAttribute('data-cfasync', 'false');
       document.body.appendChild(script);
-      console.log("Monetag SDK injected.");
+      console.log('Monetag SDK injected.');
     } else {
-      console.log("Monetag SDK already present.");
+      console.log('Monetag SDK already present.');
     }
   }, []);
 
@@ -46,8 +44,8 @@ export default function Home() {
     let timeoutId: NodeJS.Timeout;
 
     const checkAdReady = () => {
-      if (typeof (window as any).show_9368336 === "function") {
-        console.log("Monetag ads ready!");
+      if (typeof (window as any).show_9368336 === 'function') {
+        console.log('Monetag ads ready!');
         return;
       }
 
@@ -55,7 +53,7 @@ export default function Home() {
         retries++;
         timeoutId = setTimeout(checkAdReady, 1000); // Faster retry interval
       } else {
-        console.warn("Monetag ads failed to initialize.");
+        console.warn('Monetag ads failed to initialize.');
       }
     };
 
@@ -68,24 +66,24 @@ export default function Home() {
   }, []);
 
   const initInAppInterstitial = () => {
-    if (typeof (window as any).show_9368336 === "function") {
+    if (typeof (window as any).show_9368336 === 'function') {
       try {
         (window as any).show_9368336({
-          type: "inApp",
+          type: 'inApp',
           inAppSettings: {
             frequency: 2,
             capping: 0.1,
             interval: 30,
             timeout: 5,
-            everyPage: false,
-          },
+            everyPage: false
+          }
         });
-        console.log("In-app interstitial initialized.");
+        console.log('In-app interstitial initialized.');
       } catch (error) {
-        console.error("In-app interstitial failed:", error);
+        console.error('In-app interstitial failed:', error);
       }
     } else {
-      console.log("Monetag SDK not ready for in-app ads");
+      console.log('Monetag SDK not ready for in-app ads');
     }
   };
 
@@ -117,131 +115,102 @@ export default function Home() {
 
     try {
       // Show Monetag ad first
-      if (typeof window.show_9368336 === "function") {
-        console.log("Attempting to show Monetag ad...");
+      if (typeof window.show_9368336 === 'function') {
+        console.log('Attempting to show Monetag ad...');
         try {
           await new Promise<void>((resolve, reject) => {
             const timeout = setTimeout(() => {
-              console.log("Ad timeout reached");
-              reject(new Error("Ad timeout"));
+              console.log('Ad timeout reached');
+              reject(new Error('Ad timeout'));
             }, 10000); // 10 second timeout
 
             // Try to show the ad
             window.show_9368336({
               onLoad: () => {
-                console.log("Ad loaded successfully");
+                console.log('Ad loaded successfully');
                 clearTimeout(timeout);
                 adShown = true;
                 resolve();
               },
               onError: (error: any) => {
-                console.error("Ad failed to load:", error);
+                console.error('Ad failed to load:', error);
                 clearTimeout(timeout);
                 reject(error);
               },
               onComplete: () => {
-                console.log("Ad completed");
+                console.log('Ad completed');
                 clearTimeout(timeout);
                 adShown = true;
                 resolve();
-              },
+              }
             });
           });
         } catch (adError) {
-          console.warn("Monetag ad failed, continuing with API call:", adError);
+          console.warn('Monetag ad failed, continuing with API call:', adError);
         }
       } else {
-        console.log("Monetag SDK not ready, proceeding with API call");
+        console.log('Monetag SDK not ready, proceeding with API call');
       }
 
       // Always call the API regardless of ad success
-      if (user?.id) {
-        console.log("Calling watchAd API...");
-        await watchAdMutation.mutateAsync(user.id);
-        console.log("Watch ad completed successfully");
+      if (displayUser?.id && displayUser.id !== "loading...") {
+        console.log('Calling watchAd API...');
+        await watchAdMutation.mutateAsync(displayUser.id);
+        console.log('Watch ad completed successfully');
       }
     } catch (error) {
-      console.error("Error in handleWatchAd:", error);
+      console.error('Error in handleWatchAd:', error);
     } finally {
       setIsWatchingAd(false);
     }
   };
 
   const handleClaimEarnings = async () => {
-    if (!canClaimEarnings() || !user?.id) return;
+    if (!canClaimEarnings() || !displayUser?.id || displayUser.id === "loading...") return;
 
     try {
-      await claimEarningsMutation.mutateAsync(user.id);
+      await claimEarningsMutation.mutateAsync(displayUser.id);
     } catch (error) {
-      console.error("Error claiming earnings:", error);
+      console.error('Error claiming earnings:', error);
     }
   };
 
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="text-center">
-          <div className="text-4xl mb-4 text-destructive">⚠️</div>
-          <p className="text-muted-foreground">Failed to load user data</p>
-          <p className="text-sm text-muted-foreground mt-2">{error.message}</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (isLoading || !user) {
-    return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="text-center">
-          <div className="loading-pulse text-4xl mb-4">⚡</div>
-          <p className="text-muted-foreground">Loading your data...</p>
-        </div>
-      </div>
-    );
-  }
+  // Show content immediately with fallback values
+  const displayUser = user || {
+    withdrawBalance: "0",
+    dailyEarnings: "0",
+    dailyAdCount: 0,
+    lastAdWatch: null,
+    pendingEarnings: "0",
+    id: "loading..."
+  };
 
   return (
     <div className="space-y-6">
       {/* Balance Cards */}
       <div className="space-y-4">
         {/* Withdraw Balance Card */}
-        <Card
-          className="gradient-border p-5"
-          data-testid="card-withdraw-balance"
-        >
+        <Card className="gradient-border p-5" data-testid="card-withdraw-balance">
           <div className="flex items-center gap-2 mb-2">
             <i className="fas fa-wallet text-primary"></i>
             <span className="text-white font-medium">Withdraw Balance</span>
           </div>
-          <div
-            className="text-3xl font-bold text-white mb-1"
-            data-testid="text-withdraw-balance"
-          >
-            ${parseFloat(user.withdrawBalance || "0").toFixed(5)}
+          <div className="text-3xl font-bold text-white mb-1" data-testid="text-withdraw-balance">
+            ${parseFloat(displayUser.withdrawBalance || "0").toFixed(5)}
           </div>
-          <div className="text-sm text-muted-foreground">
-            Available for withdrawal
-          </div>
+          <div className="text-sm text-muted-foreground">Available for withdrawal</div>
         </Card>
 
         {/* Today's Earnings Card */}
-        <Card
-          className="bg-card border border-border p-5"
-          data-testid="card-daily-earnings"
-        >
+        <Card className="bg-card border border-border p-5" data-testid="card-daily-earnings">
           <div className="flex items-center gap-2 mb-2">
             <i className="fas fa-coins text-green-500"></i>
             <span className="text-white font-medium">Today's Earnings</span>
           </div>
-          <div
-            className="text-3xl font-bold text-green-500 mb-1"
-            data-testid="text-daily-earnings"
-          >
-            ${parseFloat(user.dailyEarnings || "0").toFixed(5)}
+          <div className="text-3xl font-bold text-green-500 mb-1" data-testid="text-daily-earnings">
+            ${parseFloat(displayUser.dailyEarnings || "0").toFixed(5)}
           </div>
-          <div className="text-sm text-muted-foreground">
-            Earned from watching ads
-          </div>
+          <div className="text-sm text-muted-foreground">Earned from watching ads</div>
         </Card>
       </div>
 
@@ -249,10 +218,7 @@ export default function Home() {
       <div className="space-y-3">
         <div className="flex justify-between items-center">
           <span className="text-white font-medium">Daily Progress</span>
-          <span
-            className="text-muted-foreground text-sm"
-            data-testid="text-progress"
-          >
+          <span className="text-muted-foreground text-sm" data-testid="text-progress">
             {dailyProgress.current}/{dailyProgress.max}
           </span>
         </div>
@@ -301,11 +267,7 @@ export default function Home() {
 
         <Button
           onClick={handleClaimEarnings}
-          disabled={
-            !canClaimEarnings() ||
-            claimEarningsMutation.isPending ||
-            isWatchingAd
-          }
+          disabled={!canClaimEarnings() || claimEarningsMutation.isPending || isWatchingAd}
           variant="secondary"
           className="w-full font-semibold py-4 px-6 h-auto flex items-center justify-center gap-3 disabled:opacity-50"
           data-testid="button-claim-earnings"
@@ -328,18 +290,13 @@ export default function Home() {
 
       {/* Loading Overlay */}
       {isWatchingAd && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-          data-testid="overlay-loading"
-        >
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" data-testid="overlay-loading">
           <Card className="p-6 text-center">
             <div className="loading-pulse mb-3">
               <i className="fas fa-play-circle text-4xl text-primary"></i>
             </div>
             <div className="text-white font-medium">Watching Ad...</div>
-            <div className="text-sm text-muted-foreground mt-1">
-              Please wait 3 seconds
-            </div>
+            <div className="text-sm text-muted-foreground mt-1">Please wait 3 seconds</div>
           </Card>
         </div>
       )}
